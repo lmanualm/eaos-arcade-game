@@ -3,32 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Breakout - Arcade Game</title>
+    <title>Arcade Breakout - Classic Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Header Section -->
+    <header class="header">
+        <div class="container">
+            <h1 class="game-title">Arcade Breakout</h1>
+            <p class="tagline">Master the classic brick-breaking game</p>
+        </div>
+    </header>
+
     <div class="container">
-        <div class="header">
-            <h1>Breakout</h1>
-            <div class="stats">
-                <div class="stat">Score: <span id="score">0</span></div>
-                <div class="stat">Level: <span id="level">1</span></div>
-                <div class="stat">Lives: <span id="lives">3</span></div>
+        <!-- Main Content -->
+        <div class="content-wrapper">
+            <!-- Game Section -->
+            <section class="game-section">
+                <div class="game-wrapper">
+                    <div class="score-display">Score: <span id="score">0</span></div>
+                    <div class="canvas-container">
+                        <canvas id="gameCanvas" width="800" height="600"></canvas>
+                        <div class="game-over" id="gameOver" hidden>GAME OVER</div>
+                    </div>
+                    <div class="game-instructions">
+                        <p><strong>Controls:</strong> Use ← → Arrow keys to move paddle</p>
+                        <p><strong>Start:</strong> Press Space to begin or restart</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Leaderboard Section -->
+            <section class="leaderboard-section">
+                <h2>Top 10 Leaderboard</h2>
+                <table class="leaderboard">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Score</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <tr>
+                            <td>1</td>
+                            <td>Champion</td>
+                            <td>800</td>
+                            <td>Today</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>Expert</td>
+                            <td>750</td>
+                            <td>Yesterday</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>Master</td>
+                            <td>700</td>
+                            <td>2 days ago</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>Skilled</td>
+                            <td>650</td>
+                            <td>3 days ago</td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>Player</td>
+                            <td>600</td>
+                            <td>4 days ago</td>
+                        </tr>
+                        <tr>
+                            <td>6</td>
+                            <td>Gamer</td>
+                            <td>550</td>
+                            <td>5 days ago</td>
+                        </tr>
+                        <tr>
+                            <td>7</td>
+                            <td>Enthusiast</td>
+                            <td>500</td>
+                            <td>6 days ago</td>
+                        </tr>
+                        <tr>
+                            <td>8</td>
+                            <td>Beginner</td>
+                            <td>450</td>
+                            <td>1 week ago</td>
+                        </tr>
+                        <tr>
+                            <td>9</td>
+                            <td>Novice</td>
+                            <td>400</td>
+                            <td>1 week ago</td>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td>Starter</td>
+                            <td>350</td>
+                            <td>2 weeks ago</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+
+        <!-- About Section -->
+        <section class="about-section">
+            <h2>About Arcade Breakout</h2>
+            <p>
+                Arcade Breakout is a classic brick-breaking game that combines simple gameplay with addictive challenges. 
+                Maneuver your paddle to bounce the ball and destroy all the bricks on screen. The further you progress, 
+                the more challenging the game becomes!
+            </p>
+            <div class="features">
+                <div class="feature">
+                    <h3>🎮 Engaging Gameplay</h3>
+                    <p>Simple controls with challenging brick patterns that keep you coming back for more.</p>
+                </div>
+                <div class="feature">
+                    <h3>⚡ Dynamic Physics</h3>
+                    <p>Realistic ball physics that respond to paddle position for skilled play.</p>
+                </div>
+                <div class="feature">
+                    <h3>🏆 Leaderboard</h3>
+                    <p>Compete with others and see your score on the global leaderboard.</p>
+                </div>
             </div>
-        </div>
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div id="gameOverModal" class="modal hidden">
-            <div class="modal-content">
-                <h2 id="gameOverTitle">Game Over</h2>
-                <p id="gameOverMessage"></p>
-                <p>Final Score: <span id="finalScore">0</span></p>
-                <button id="restartBtn" onclick="location.reload()">Restart Game</button>
-            </div>
-        </div>
-        <div class="info">
-            <p>Use <strong>LEFT/RIGHT</strong> arrow keys to move the paddle. Press <strong>SPACE</strong> to start.</p>
-        </div>
+        </section>
     </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 Arcade Breakout. All rights reserved.</p>
+    </footer>
+
     <script src="game.js"></script>
 </body>
 </html>
