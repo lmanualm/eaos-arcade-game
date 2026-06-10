@@ -161,6 +161,79 @@ function endGame() {
     gameOverDiv.hidden = false;
     gameOverDiv.textContent = 'GAME OVER';
     gameOverDiv.style.color = '#ff3333';
+    
+    // Submit score to leaderboard if score > 0
+    if (score > 0) {
+        submitScore();
+    }
+}
+
+// Submit score to the leaderboard API
+async function submitScore() {
+    const playerName = prompt('Enter your name for the leaderboard:', 'Player') || 'Anonymous';
+    
+    try {
+        const response = await fetch('/api/scores', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: playerName,
+                score: score
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Score submitted:', data);
+            // Refresh leaderboard after submitting
+            loadLeaderboard();
+        } else {
+            console.error('Failed to submit score');
+        }
+    } catch (err) {
+        console.error('Error submitting score:', err);
+    }
+}
+
+// Load and display leaderboard
+async function loadLeaderboard() {
+    try {
+        const response = await fetch('/api/leaderboard');
+        if (response.ok) {
+            const data = await response.json();
+            displayLeaderboard(data.scores);
+        } else {
+            console.error('Failed to load leaderboard');
+        }
+    } catch (err) {
+        console.error('Error loading leaderboard:', err);
+    }
+}
+
+// Display leaderboard in the table
+function displayLeaderboard(leaderboardScores) {
+    const leaderboardList = document.getElementById('leaderboardList');
+    if (!leaderboardList) return;
+    
+    leaderboardList.innerHTML = '';
+    
+    if (leaderboardScores.length === 0) {
+        leaderboardList.innerHTML = '<div class="leaderboard-entry"><span colspan="3">No scores yet. Be the first!</span></div>';
+        return;
+    }
+    
+    leaderboardScores.forEach((entry, index) => {
+        const entryDiv = document.createElement('div');
+        entryDiv.className = 'leaderboard-entry';
+        entryDiv.innerHTML = `
+            <span class="rank">${index + 1}</span>
+            <span class="player">${entry.name}</span>
+            <span class="score">${entry.score}</span>
+        `;
+        leaderboardList.appendChild(entryDiv);
+    });
 }
 
 function restart() {
@@ -197,5 +270,24 @@ function loop() {
 }
 
 initBricks();
-gameRunning = true;
+gameRunning = false;
+
+// Load leaderboard on page load
+loadLeaderboard();
+
 loop();
+
+// Navigation functions for landing page and game page
+function startGame() {
+    document.getElementById('landingPage').hidden = true;
+    document.getElementById('gamePage').hidden = false;
+    restart();
+}
+
+function backToLanding() {
+    document.getElementById('gamePage').hidden = true;
+    document.getElementById('landingPage').hidden = false;
+    gameRunning = false;
+    // Reload leaderboard when returning to landing
+    loadLeaderboard();
+}

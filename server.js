@@ -4,9 +4,13 @@ const path = require('path');
 const url = require('url');
 
 const PORT = process.env.PORT || 3000;
+const SCORES_FILE = path.join(__dirname, 'scores.json');
 
-// In-memory score storage (top-10)
+// In-memory score storage (top-10 cached)
 let scores = [];
+let cachedLeaderboard = [];
+let lastCacheTime = 0;
+const CACHE_TTL = 5000; // Cache for 5 seconds
 
 // Helper: keep only top 10 scores
 function keepTop10(scoresArray) {
@@ -14,6 +18,42 @@ function keepTop10(scoresArray) {
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
 }
+
+// Helper: load scores from file
+function loadScoresFromFile() {
+  try {
+    if (fs.existsSync(SCORES_FILE)) {
+      const data = fs.readFileSync(SCORES_FILE, 'utf8');
+      return JSON.parse(data) || [];
+    }
+  } catch (err) {
+    console.error('Error loading scores:', err);
+  }
+  return [];
+}
+
+// Helper: save scores to file
+function saveScoresToFile(scoresArray) {
+  try {
+    fs.writeFileSync(SCORES_FILE, JSON.stringify(scoresArray, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error saving scores:', err);
+  }
+}
+
+// Helper: get top 10 with caching
+function getLeaderboard() {
+  const now = Date.now();
+  if (now - lastCacheTime > CACHE_TTL || cachedLeaderboard.length === 0) {
+    const allScores = loadScoresFromFile();
+    cachedLeaderboard = keepTop10(allScores);
+    lastCacheTime = now;
+  }
+  return cachedLeaderboard;
+}
+
+// Load scores at startup
+scores = loadScoresFromFile();
 
 // Helper: serve static files
 function serveStaticFile(filePath, res) {
@@ -56,10 +96,24 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // GET /api/scores - return top-10 scores
+  // GET /api/leaderboard - return top-10 scores (optimized for performance)
+  if (req.method === 'GET' && pathname === '/api/leaderboard') {
+    const startTime = Date.now();
+    const leaderboard = getLeaderboard();
+    const queryTime = Date.now() - startTime;
+    
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      scores: leaderboard,
+      queryTimeMs: queryTime
+    }));
+    return;
+  }
+
+  // GET /api/scores - return top-10 scores (legacy endpoint)
   if (req.method === 'GET' && pathname === '/api/scores') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ scores: scores }));
+    res.end(JSON.stringify({ scores: getLeaderboard() }));
     return;
   }
 
@@ -72,19 +126,37 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
-        if (data.name && typeof data.score === 'number') {
-          scores.push({
-            name: data.name,
-            score: data.score,
-            timestamp: new Date().toISOString()
-          });
-          scores = keepTop10(scores);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true, scores: scores }));
-        } else {
+        
+        // Validate input
+        if (!data.name || typeof data.score !== 'number') {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid data' }));
+          res.end(JSON.stringify({ error: 'Invalid data: name and score are required' }));
+          return;
         }
+        
+        if (data.score < 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid data: score cannot be negative' }));
+          return;
+        }
+        
+        // Add new score
+        scores.push({
+          name: String(data.name).slice(0, 50), // Limit name length
+          score: Math.floor(data.score),
+          timestamp: new Date().toISOString()
+        });
+        
+        // Keep only top 10 and save
+        scores = keepTop10(scores);
+        saveScoresToFile(scores);
+        
+        // Invalidate cache
+        cachedLeaderboard = scores;
+        lastCacheTime = Date.now();
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, scores: scores }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid JSON' }));
