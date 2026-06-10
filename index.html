@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breakout - Arcade Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Breakout</h1>
+            <div class="stats">
+                <div class="stat">Score: <span id="score">0</span></div>
+                <div class="stat">Level: <span id="level">1</span></div>
+                <div class="stat">Lives: <span id="lives">3</span></div>
+            </div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="gameOverModal" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="gameOverTitle">Game Over</h2>
+                <p id="gameOverMessage"></p>
+                <p>Final Score: <span id="finalScore">0</span></p>
+                <button id="restartBtn" onclick="location.reload()">Restart Game</button>
+            </div>
+        </div>
+        <div class="info">
+            <p>Use <strong>LEFT/RIGHT</strong> arrow keys to move the paddle. Press <strong>SPACE</strong> to start.</p>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
