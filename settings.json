@@ -26,19 +26,5 @@
     "soundEnabled": false,
     "createdAt": "2026-06-11T10:40:51.612Z",
     "updatedAt": "2026-06-11T10:40:51.612Z"
-  },
-  "bob-test": {
-    "playerId": "bob-test",
-    "nickname": "Bob",
-    "soundEnabled": true,
-    "createdAt": "2026-06-11T11:49:36.745Z",
-    "updatedAt": "2026-06-11T11:49:36.745Z"
-  },
-  "test-player-xyz": {
-    "playerId": "test-player-xyz",
-    "nickname": "NewNickname",
-    "soundEnabled": false,
-    "createdAt": "2026-06-11T11:51:24.901Z",
-    "updatedAt": "2026-06-11T11:51:24.902Z"
   }
 }
