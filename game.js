@@ -10,25 +10,81 @@ const soundToggle = document.getElementById('soundToggle');
 
 // Default settings
 let playerSettings = {
+    playerId: 'default-player',
     nickname: 'Player',
     soundEnabled: true
 };
 
-// Load settings from localStorage
-function loadSettings() {
-    const saved = localStorage.getItem('playerSettings');
-    if (saved) {
-        playerSettings = JSON.parse(saved);
-        nicknameInput.value = playerSettings.nickname;
-        soundToggle.checked = playerSettings.soundEnabled;
+// Get or create player ID (using session storage to persist across page reloads)
+function getPlayerId() {
+    let playerId = sessionStorage.getItem('playerId');
+    if (!playerId) {
+        playerId = 'player-' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('playerId', playerId);
+    }
+    return playerId;
+}
+
+// Load settings from backend API
+async function loadSettings() {
+    const playerId = getPlayerId();
+    playerSettings.playerId = playerId;
+    
+    try {
+        const response = await fetch(`/api/settings/${encodeURIComponent(playerId)}`);
+        if (response.ok) {
+            const data = await response.json();
+            playerSettings = data;
+            nicknameInput.value = playerSettings.nickname || 'Player';
+            soundToggle.checked = playerSettings.soundEnabled !== false;
+        } else {
+            console.error('Failed to load settings from backend');
+            setDefaultSettings();
+        }
+    } catch (err) {
+        console.error('Error loading settings from backend:', err);
+        setDefaultSettings();
     }
 }
 
-// Save settings to localStorage
-function saveSettings() {
+// Set default settings
+function setDefaultSettings() {
+    playerSettings.nickname = 'Player';
+    playerSettings.soundEnabled = true;
+    nicknameInput.value = playerSettings.nickname;
+    soundToggle.checked = playerSettings.soundEnabled;
+}
+
+// Save settings to backend API
+async function saveSettings() {
     playerSettings.nickname = nicknameInput.value || 'Player';
     playerSettings.soundEnabled = soundToggle.checked;
-    localStorage.setItem('playerSettings', JSON.stringify(playerSettings));
+    
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                playerId: playerSettings.playerId,
+                nickname: playerSettings.nickname,
+                soundEnabled: playerSettings.soundEnabled
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            playerSettings = data.settings;
+            console.log('Settings saved successfully');
+        } else {
+            const error = await response.json();
+            console.error('Failed to save settings:', error);
+        }
+    } catch (err) {
+        console.error('Error saving settings:', err);
+    }
+    
     closeSettings();
 }
 
