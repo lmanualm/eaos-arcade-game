@@ -5,12 +5,16 @@ const url = require('url');
 
 const PORT = process.env.PORT || 3000;
 const SCORES_FILE = path.join(__dirname, 'scores.json');
+const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 
 // In-memory score storage (top-10 cached)
 let scores = [];
 let cachedLeaderboard = [];
 let lastCacheTime = 0;
 const CACHE_TTL = 5000; // Cache for 5 seconds
+
+// In-memory settings storage
+let playerSettings = {};
 
 // Helper: keep only top 10 scores
 function keepTop10(scoresArray) {
@@ -41,6 +45,28 @@ function saveScoresToFile(scoresArray) {
   }
 }
 
+// Helper: load settings from file
+function loadSettingsFromFile() {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
+      return JSON.parse(data) || {};
+    }
+  } catch (err) {
+    console.error('Error loading settings:', err);
+  }
+  return {};
+}
+
+// Helper: save settings to file
+function saveSettingsToFile(settingsObj) {
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settingsObj, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error saving settings:', err);
+  }
+}
+
 // Helper: get top 10 with caching
 function getLeaderboard() {
   const now = Date.now();
@@ -54,6 +80,9 @@ function getLeaderboard() {
 
 // Load scores at startup
 scores = loadScoresFromFile();
+
+// Load settings at startup
+playerSettings = loadSettingsFromFile();
 
 // Helper: serve static files
 function serveStaticFile(filePath, res) {
@@ -157,6 +186,88 @@ const server = http.createServer((req, res) => {
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, scores: scores }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+   // GET /api/settings/:playerId - retrieve player settings
+   const settingsGetMatch = pathname.match(/^\/api\/settings\/(.*?)$/);
+   if (req.method === 'GET' && pathname.startsWith('/api/settings/')) {
+     const playerId = decodeURIComponent(settingsGetMatch ? settingsGetMatch[1] : '');
+    
+    if (!playerId || playerId.length === 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Player ID is required' }));
+      return;
+    }
+    
+    const settings = playerSettings[playerId] || {
+      playerId: playerId,
+      nickname: playerId,
+      soundEnabled: true,
+      createdAt: new Date().toISOString()
+    };
+    
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(settings));
+    return;
+  }
+
+  // POST /api/settings - save player settings
+  if (req.method === 'POST' && pathname === '/api/settings') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        
+        // Validate required fields
+        if (!data.playerId) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Player ID is required' }));
+          return;
+        }
+        
+        const playerId = String(data.playerId).slice(0, 100); // Limit player ID length
+        
+        // Validate nickname if provided
+        if (data.nickname !== undefined && data.nickname !== null) {
+          const nickname = String(data.nickname).slice(0, 50);
+          if (nickname.length === 0) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Nickname cannot be empty' }));
+            return;
+          }
+        }
+        
+        // Validate soundEnabled if provided
+        if (data.soundEnabled !== undefined && typeof data.soundEnabled !== 'boolean') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Sound preference must be a boolean' }));
+          return;
+        }
+        
+        // Create or update settings
+        const currentSettings = playerSettings[playerId] || { createdAt: new Date().toISOString() };
+        const updatedSettings = {
+          playerId: playerId,
+          nickname: data.nickname !== undefined ? String(data.nickname).slice(0, 50) : (currentSettings.nickname || playerId),
+          soundEnabled: data.soundEnabled !== undefined ? data.soundEnabled : (currentSettings.soundEnabled !== undefined ? currentSettings.soundEnabled : true),
+          createdAt: currentSettings.createdAt,
+          updatedAt: new Date().toISOString()
+        };
+        
+        playerSettings[playerId] = updatedSettings;
+        saveSettingsToFile(playerSettings);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, settings: updatedSettings }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid JSON' }));
