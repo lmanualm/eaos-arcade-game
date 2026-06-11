@@ -12,19 +12,5 @@
     "soundEnabled": true,
     "createdAt": "2026-06-11T10:33:26.149Z",
     "updatedAt": "2026-06-11T10:35:32.290Z"
-  },
-  "final-test": {
-    "playerId": "final-test",
-    "nickname": "FinalTest",
-    "soundEnabled": false,
-    "createdAt": "2026-06-11T10:39:09.936Z",
-    "updatedAt": "2026-06-11T10:39:09.937Z"
-  },
-  "verify-post": {
-    "playerId": "verify-post",
-    "nickname": "TestPlayer",
-    "soundEnabled": false,
-    "createdAt": "2026-06-11T10:40:51.612Z",
-    "updatedAt": "2026-06-11T10:40:51.612Z"
   }
 }

@@ -181,6 +181,7 @@ PORT=8080 node server.js
 
 ### Environment Variables
 - `PORT`: Server port (default: 3000)
+- `HOST`: Interface to bind to (default: `0.0.0.0`)
 
 ---
 
@@ -237,6 +238,42 @@ curl -X POST http://localhost:3000/api/scores \
 
 ---
 
+## Web Deployment
+
+### Server Accessibility
+
+The server binds to `0.0.0.0` by default so it is reachable from any network interface. When running inside a container or on a remote host, set `HOST` and `PORT` to control the listen address:
+
+```bash
+HOST=0.0.0.0 PORT=3000 node server.js
+```
+
+### Frontend API Base URL
+
+The frontend (`game.js`) calls the API using **relative URLs** (`/api/...`). This works automatically when the static files (`index.html`, `game.js`, `style.css`) are served from the same origin as the API.
+
+If you deploy the static frontend to a separate host (e.g., GitHub Pages, Netlify, Vercel) and the API server to another host (e.g., Render, Heroku, AWS), you must tell the frontend where the API lives. Before loading `game.js`, set `window.API_BASE_URL`:
+
+```html
+<script>window.API_BASE_URL = 'https://your-api-server.example.com';</script>
+<script src="game.js"></script>
+```
+
+If `window.API_BASE_URL` is not set, the frontend defaults to relative paths (same origin).
+
+### Deployment Scenarios
+
+| Scenario | Static Host | API Host | Action Required |
+|----------|-------------|----------|-----------------|
+| Same origin | `example.com` | `example.com` | None |
+| Separate hosts | `static-host.com` | `api-host.com` | Set `window.API_BASE_URL` to API host |
+
+### CORS
+
+The server already sends CORS headers (`Access-Control-Allow-Origin: *`) so cross-origin requests from a separately-hosted frontend will succeed once `window.API_BASE_URL` is configured.
+
+---
+
 ## Version
-**API Version**: 1.0  
-**Last Updated**: 2026-06-10
+**API Version**: 1.1  
+**Last Updated**: 2026-06-11

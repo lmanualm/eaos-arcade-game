@@ -1,5 +1,5 @@
+const API_BASE_URL = (typeof window !== 'undefined' && window.API_BASE_URL) || '';
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
 const scoreSpan = document.getElementById('score');
 const gameOverDiv = document.getElementById('gameOver');
 
@@ -31,7 +31,7 @@ async function loadSettings() {
     playerSettings.playerId = playerId;
     
     try {
-        const response = await fetch(`/api/settings/${encodeURIComponent(playerId)}`);
+        const response = await fetch(`${API_BASE_URL}/api/settings/${encodeURIComponent(playerId)}`);
         if (response.ok) {
             const data = await response.json();
             playerSettings = data;
@@ -61,7 +61,7 @@ async function saveSettings() {
     playerSettings.soundEnabled = soundToggle.checked;
     
     try {
-        const response = await fetch('/api/settings', {
+        const response = await fetch(`${API_BASE_URL}/api/settings`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -292,7 +292,7 @@ async function submitScore() {
     const playerName = playerSettings.nickname || 'Anonymous';
     
     try {
-        const response = await fetch('/api/scores', {
+        const response = await fetch(`${API_BASE_URL}/api/scores`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -319,7 +319,7 @@ async function submitScore() {
 // Load and display leaderboard
 async function loadLeaderboard() {
     try {
-        const response = await fetch('/api/leaderboard');
+        const response = await fetch(`${API_BASE_URL}/api/leaderboard`);
         if (response.ok) {
             const data = await response.json();
             displayLeaderboard(data.scores);
