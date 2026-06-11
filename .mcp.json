@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "paperclip-company-knowledge": {
+      "type": "http",
+      "url": "http://127.0.0.1:39145/api/companies/bb18115b-f2e6-4ade-820e-3af31f4e5904/eaos/runtime/knowledge-mcp",
+      "note": "Built-in company knowledge search (vector recall over the learned KB + Slack-channel docs).",
+      "headers": {
+        "Authorization": "Bearer QILnwdoyefa_9ZFNX4_aFMga3t3Yl5nu"
+      }
+    },
+    "paperclip-pd-global-gmail": {
+      "type": "http",
+      "url": "https://remote.mcp.pipedream.net/v3",
+      "headers": {
+        "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJFZERTQSJ9.eyJqdGkiOiIzMzZjMDJiYS03MDdlLTRlZWMtYmUzZi1hNTEzNTJiMDYzZjIiLCJpc3MiOiJodHRwczovL2FwaS5waXBlZHJlYW0uY29tIiwiZXhwIjoxNzgxMjA5OTU0LCJpYXQiOjE3ODEyMDYzNTQsIm5iZiI6MTc4MTIwNjM0OSwidG9rZW5fdHlwZSI6Im9hdXRoX2FjY2Vzc190b2tlbiIsImF1ZCI6WyJhcGkiLCJjYXRjaGVyIl0sInNjb3BlcyI6WyIqIl0sInN1YiI6Im9fWEdJUDU1ZSIsInJlc291cmNlX3R5cGUiOiJvcmcifQ.nzf9bZocD5Ab7DSY4Rm1vDdgeS41EP0CPeisWVI30nJe464QSfbr62wmMSLwCLRWYDgtu86xgC1d3VD908OkAQ",
+        "x-pd-project-id": "proj_zNszjy4",
+        "x-pd-environment": "production",
+        "x-pd-external-user-id": "company:bb18115b-f2e6-4ade-820e-3af31f4e5904",
+        "x-pd-app-slug": "gmail"
+      },
+      "note": "Paperclip-managed Pipedream connector: gmail (global)."
+    }
+  }
+}
