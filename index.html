@@ -44,10 +44,37 @@
     <!-- Game Page -->
     <div id="gamePage" class="game-page" hidden>
         <button class="back-button" onclick="backToLanding()">← Back to Landing</button>
+        <button class="settings-button" onclick="openSettings()">⚙ Settings</button>
         <div class="game-wrapper">
             <div class="score-display">Score: <span id="score">0</span></div>
             <canvas id="gameCanvas" width="800" height="600"></canvas>
             <div class="game-over" id="gameOver" hidden>GAME OVER</div>
+        </div>
+    </div>
+
+    <!-- Settings Panel Modal -->
+    <div id="settingsModal" class="settings-modal" hidden>
+        <div class="settings-panel">
+            <div class="settings-header">
+                <h2>Settings</h2>
+                <button class="close-button" onclick="closeSettings()">&times;</button>
+            </div>
+            <div class="settings-content">
+                <div class="settings-item">
+                    <label for="nicknameInput">Player Nickname:</label>
+                    <input type="text" id="nicknameInput" class="settings-input" placeholder="Enter your nickname" maxlength="20">
+                </div>
+                <div class="settings-item">
+                    <label for="soundToggle">
+                        <input type="checkbox" id="soundToggle" class="settings-checkbox">
+                        Enable Sound Effects
+                    </label>
+                </div>
+            </div>
+            <div class="settings-footer">
+                <button class="save-button" onclick="saveSettings()">Save</button>
+                <button class="cancel-button" onclick="closeSettings()">Cancel</button>
+            </div>
         </div>
     </div>
 

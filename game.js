@@ -3,6 +3,69 @@ const ctx = canvas.getContext('2d');
 const scoreSpan = document.getElementById('score');
 const gameOverDiv = document.getElementById('gameOver');
 
+// Settings management
+const settingsModal = document.getElementById('settingsModal');
+const nicknameInput = document.getElementById('nicknameInput');
+const soundToggle = document.getElementById('soundToggle');
+
+// Default settings
+let playerSettings = {
+    nickname: 'Player',
+    soundEnabled: true
+};
+
+// Load settings from localStorage
+function loadSettings() {
+    const saved = localStorage.getItem('playerSettings');
+    if (saved) {
+        playerSettings = JSON.parse(saved);
+        nicknameInput.value = playerSettings.nickname;
+        soundToggle.checked = playerSettings.soundEnabled;
+    }
+}
+
+// Save settings to localStorage
+function saveSettings() {
+    playerSettings.nickname = nicknameInput.value || 'Player';
+    playerSettings.soundEnabled = soundToggle.checked;
+    localStorage.setItem('playerSettings', JSON.stringify(playerSettings));
+    closeSettings();
+}
+
+// Open settings modal
+function openSettings() {
+    settingsModal.hidden = false;
+    // Pause game if running
+    const wasRunning = gameRunning;
+    gameRunning = false;
+    // Resume flag to restore after closing without saving
+    settingsModal.dataset.wasRunning = wasRunning;
+}
+
+// Close settings modal without saving
+function closeSettings() {
+    settingsModal.hidden = true;
+    // Restore game running state if it was running before
+    if (settingsModal.dataset.wasRunning === 'true') {
+        gameRunning = true;
+    }
+}
+
+// Close modal when clicking outside the panel
+settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) {
+        closeSettings();
+    }
+});
+
+// Prevent closing modal when clicking inside the panel
+const settingsPanel = document.querySelector('.settings-panel');
+if (settingsPanel) {
+    settingsPanel.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
 const W = 800;
 const H = 600;
 const PADDLE_W = 100;
@@ -170,7 +233,7 @@ function endGame() {
 
 // Submit score to the leaderboard API
 async function submitScore() {
-    const playerName = prompt('Enter your name for the leaderboard:', 'Player') || 'Anonymous';
+    const playerName = playerSettings.nickname || 'Anonymous';
     
     try {
         const response = await fetch('/api/scores', {
@@ -272,7 +335,8 @@ function loop() {
 initBricks();
 gameRunning = false;
 
-// Load leaderboard on page load
+// Load settings and leaderboard on page load
+loadSettings();
 loadLeaderboard();
 
 loop();

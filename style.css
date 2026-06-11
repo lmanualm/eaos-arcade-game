@@ -242,6 +242,208 @@ body {
     text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
 }
 
+/* Settings Button */
+.settings-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 212, 255, 0.2);
+    color: #00d4ff;
+    border: 2px solid #00d4ff;
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    z-index: 100;
+}
+
+.settings-button:hover {
+    background: rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+}
+
+.settings-button:active {
+    transform: scale(0.98);
+}
+
+/* Settings Modal Overlay */
+.settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+/* Settings Panel */
+.settings-panel {
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+    border: 3px solid #00d4ff;
+    border-radius: 10px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.4), inset 0 0 20px rgba(0, 212, 255, 0.1);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+    padding-bottom: 15px;
+}
+
+.settings-header h2 {
+    font-size: 28px;
+    color: #00d4ff;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+    margin: 0;
+    letter-spacing: 2px;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    color: #00d4ff;
+    font-size: 32px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-button:hover {
+    color: #ff3333;
+    text-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+    transform: rotate(90deg);
+}
+
+/* Settings Content */
+.settings-content {
+    margin-bottom: 25px;
+}
+
+.settings-item {
+    margin-bottom: 20px;
+}
+
+.settings-item label {
+    display: block;
+    margin-bottom: 8px;
+    color: #a8dadc;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.settings-input {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    border-radius: 5px;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.settings-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #00d4ff;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+}
+
+.settings-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.settings-checkbox {
+    margin-right: 10px;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: #00d4ff;
+}
+
+/* Settings Footer */
+.settings-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.save-button,
+.cancel-button {
+    padding: 12px 25px;
+    font-size: 14px;
+    font-weight: bold;
+    border: 2px solid #00d4ff;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+.save-button {
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    color: #000;
+}
+
+.save-button:hover {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+    transform: scale(1.05);
+}
+
+.save-button:active {
+    transform: scale(0.98);
+}
+
+.cancel-button {
+    background: rgba(255, 255, 255, 0.05);
+    color: #a8dadc;
+    border-color: #a8dadc;
+}
+
+.cancel-button:hover {
+    background: rgba(168, 218, 220, 0.1);
+    box-shadow: 0 0 10px rgba(168, 218, 220, 0.3);
+}
+
+.cancel-button:active {
+    transform: scale(0.98);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .landing-content {
@@ -265,6 +467,22 @@ body {
     .leaderboard-header,
     .leaderboard-entry {
         grid-template-columns: 0.3fr 1fr 0.7fr;
+        font-size: 12px;
+    }
+
+    /* Settings panel responsive */
+    .settings-panel {
+        padding: 20px;
+        max-width: 90%;
+    }
+
+    .settings-header h2 {
+        font-size: 22px;
+    }
+
+    .save-button,
+    .cancel-button {
+        padding: 10px 15px;
         font-size: 12px;
     }
 }
