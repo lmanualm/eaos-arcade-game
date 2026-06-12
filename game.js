@@ -1,4 +1,3 @@
-const API_BASE_URL = (typeof window !== 'undefined' && window.API_BASE_URL) || '';
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreSpan = document.getElementById('score');
@@ -93,38 +92,36 @@ let playerSettings = {
     nickname: 'Player',
     soundEnabled: true
 };
+// localStorage helpers for offline fallback
+const LS_SETTINGS_KEY = "breakout_settings";
+const LS_SCORES_KEY = "breakout_scores";
 
-// localStorage abstraction for settings fallback
-const localStorageSettings = {
-    _key(playerId) {
-        return 'breakout-settings-' + playerId;
-    },
-    get(playerId) {
-        try {
-            const raw = localStorage.getItem(this._key(playerId));
-            return raw ? JSON.parse(raw) : null;
-        } catch (e) {
-            console.warn('localStorageSettings.get error:', e);
-            return null;
-        }
-    },
-    save(playerId, settings) {
-        try {
-            localStorage.setItem(this._key(playerId), JSON.stringify(settings));
-        } catch (e) {
-            console.warn('localStorageSettings.save error:', e);
-        }
-    },
-    clear(playerId) {
-        try {
-            localStorage.removeItem(this._key(playerId));
-        } catch (e) {
-            console.warn('localStorageSettings.clear error:', e);
-        }
-    }
-};
+function getLocalSettings() {
+    try {
+        const raw = localStorage.getItem(LS_SETTINGS_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+}
+function setLocalSettings(settings) {
+    try { localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+}
+function getLocalScores() {
+    try {
+        const raw = localStorage.getItem(LS_SCORES_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+}
+function addLocalScore(name, score) {
+    try {
+        const scores = getLocalScores();
+        scores.push({ name, score, timestamp: new Date().toISOString() });
+        scores.sort((a, b) => b.score - a.score);
+        localStorage.setItem(LS_SCORES_KEY, JSON.stringify(scores.slice(0, 10)));
+    } catch (e) {}
+}
 
-// fetch with timeout to avoid hanging on static hosts without a backend
+
+// fetch with timeout to avoid hanging requests
 async function fetchWithTimeout(url, options = {}, timeoutMs = 3000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -137,32 +134,6 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 3000) {
         throw err;
     }
 }
-
-// Local session scores (fallback when backend is unavailable)
-const localScores = {
-    _key: 'breakout-local-scores',
-    get() {
-        try {
-            const raw = localStorage.getItem(this._key);
-            return raw ? JSON.parse(raw) : [];
-        } catch (e) {
-            return [];
-        }
-    },
-    save(scores) {
-        try {
-            localStorage.setItem(this._key, JSON.stringify(scores.slice(0, 10)));
-        } catch (e) {
-            // ignore
-        }
-    },
-    add(name, score) {
-        const scores = this.get();
-        scores.push({ name, score, timestamp: new Date().toISOString() });
-        scores.sort((a, b) => b.score - a.score);
-        this.save(scores);
-    }
-};
 
 // Get or create player ID (using session storage to persist across page reloads)
 function getPlayerId() {
@@ -182,37 +153,33 @@ function updateLandingPlayerName(name) {
     }
 }
 
-// Load settings from backend API (falls back to localStorage abstraction)
+// Load settings from backend API (falls back to localStorage)
 async function loadSettings() {
     const playerId = getPlayerId();
     playerSettings.playerId = playerId;
 
     try {
-        const response = await fetchWithTimeout(`${API_BASE_URL}/api/settings/${encodeURIComponent(playerId)}`, {}, 3000);
+        const response = await fetchWithTimeout(`/api/settings/${encodeURIComponent(playerId)}`, {}, 3000);
         if (response.ok) {
             const data = await response.json();
             playerSettings = data;
             nicknameInput.value = playerSettings.nickname || 'Player';
             soundToggle.checked = playerSettings.soundEnabled !== false;
             updateLandingPlayerName(playerSettings.nickname || 'Player');
-            // Cache successfully loaded settings to localStorage for offline fallback
-            localStorageSettings.save(playerId, playerSettings);
+            setLocalSettings(playerSettings);
             return;
         }
     } catch (err) {
-        console.error('Error loading settings from backend:', err);
+        console.error('Error loading settings:', err);
     }
 
-    // Backend failed or unavailable — fall back to localStorage abstraction
-    const cached = localStorageSettings.get(playerId);
+    const cached = getLocalSettings();
     if (cached) {
-        playerSettings = cached;
+        playerSettings = { ...playerSettings, ...cached, playerId };
         nicknameInput.value = playerSettings.nickname || 'Player';
         soundToggle.checked = playerSettings.soundEnabled !== false;
         updateLandingPlayerName(playerSettings.nickname || 'Player');
-        console.log('Loaded settings from localStorage fallback');
     } else {
-        console.warn('No cached settings in localStorage; using defaults');
         setDefaultSettings();
     }
 }
@@ -225,19 +192,17 @@ function setDefaultSettings() {
     soundToggle.checked = playerSettings.soundEnabled;
 }
 
-// Save settings to backend API (also caches via localStorage abstraction)
+// Save settings to backend API (also caches locally)
 async function saveSettings() {
     playerSettings.nickname = nicknameInput.value || 'Player';
     playerSettings.soundEnabled = soundToggle.checked;
 
     // Update landing page badge immediately so the player sees their new nickname
     updateLandingPlayerName(playerSettings.nickname);
-
-    // Always cache locally first so fallback works even if API is down
-    localStorageSettings.save(playerSettings.playerId, playerSettings);
+    setLocalSettings(playerSettings);
 
     try {
-        const response = await fetchWithTimeout(`${API_BASE_URL}/api/settings`, {
+        const response = await fetchWithTimeout(`/api/settings`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -254,8 +219,8 @@ async function saveSettings() {
             playerSettings = data.settings;
             console.log('Settings saved successfully');
         } else {
-            const error = await response.json();
-            console.error('Failed to save settings:', error);
+            const text = await response.text();
+            console.error('Failed to save settings:', response.status, text.slice(0, 200));
         }
     } catch (err) {
         console.error('Error saving settings:', err);
@@ -516,12 +481,12 @@ function endGame() {
     }
 }
 
-// Submit score to the leaderboard API
+// Submit score to the leaderboard API (falls back to localStorage)
 async function submitScore() {
     const playerName = playerSettings.nickname || 'Anonymous';
 
     try {
-        const response = await fetchWithTimeout(`${API_BASE_URL}/api/scores`, {
+        const response = await fetchWithTimeout(`/api/scores`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -542,16 +507,15 @@ async function submitScore() {
             console.error('Failed to submit score, backend returned', response.status);
         }
     } catch (err) {
-        console.error('Error submitting score to backend:', err);
+        console.error('Error submitting score:', err);
     }
 
-    // Backend unavailable or returned error — save locally so the player still sees their score
-    localScores.add(playerName, score);
-    console.log('Score saved to localStorage fallback');
+    // Backend unavailable — save locally so the player still sees their score
+    addLocalScore(playerName, score);
     loadLeaderboard();
 }
 
-// Load and display leaderboard
+// Load and display leaderboard (falls back to localStorage scores)
 async function loadLeaderboard() {
     const leaderboardList = document.getElementById('leaderboardList');
     const leaderboardError = document.getElementById('leaderboardError');
@@ -563,27 +527,25 @@ async function loadLeaderboard() {
     if (leaderboardError) leaderboardError.hidden = true;
 
     try {
-        const response = await fetchWithTimeout(`${API_BASE_URL}/api/leaderboard`, {}, 3000);
+        const response = await fetchWithTimeout(`/api/leaderboard`, {}, 3000);
         if (response.ok) {
             const data = await response.json();
             displayLeaderboard(data.scores);
             return;
         }
     } catch (err) {
-        console.error('Error loading leaderboard from backend:', err);
+        console.error('Error loading leaderboard:', err);
     }
 
-    // Backend unavailable or returned error — fall back to local session scores
-    const local = localScores.get();
+    // Backend unavailable — show local scores if any
+    const local = getLocalScores();
     if (local.length > 0) {
-        console.log('Loaded leaderboard from localStorage fallback');
         displayLeaderboard(local);
     } else {
         if (leaderboardList) {
-            leaderboardList.innerHTML = '';
+            leaderboardList.innerHTML = '<div class="leaderboard-loading">No scores yet. Play a game to set a local high score!</div>';
             leaderboardList.setAttribute('aria-busy', 'false');
         }
-        if (leaderboardError) leaderboardError.hidden = false;
     }
 }
 
