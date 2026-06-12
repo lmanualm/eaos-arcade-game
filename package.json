@@ -1,0 +1,13 @@
+{
+  "name": "eaos-arcade-game",
+  "version": "1.2.0",
+  "description": "Arcade breakout game with leaderboard and SQLite persistence",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test_leaderboard.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

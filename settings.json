@@ -1,16 +1,1 @@
-{
-  "alice-001": {
-    "playerId": "alice-001",
-    "nickname": "AlicePlus",
-    "soundEnabled": false,
-    "createdAt": "2026-06-11T10:33:26.135Z",
-    "updatedAt": "2026-06-11T10:35:32.285Z"
-  },
-  "dave-001": {
-    "playerId": "dave-001",
-    "nickname": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "soundEnabled": true,
-    "createdAt": "2026-06-11T10:33:26.149Z",
-    "updatedAt": "2026-06-11T10:35:32.290Z"
-  }
-}
+{}

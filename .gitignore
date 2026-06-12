@@ -1,1 +1,9 @@
 .paperclip-runtime/
+node_modules/
+*.db
+*.log
+*.pid
+.env
+server-loop.sh
+tunnel-loop.sh
+nohup.out
