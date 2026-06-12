@@ -4,6 +4,83 @@ const ctx = canvas.getContext('2d');
 const scoreSpan = document.getElementById('score');
 const gameOverDiv = document.getElementById('gameOver');
 
+// Landing page background canvas for particles
+const bgCanvas = document.getElementById('bgCanvas');
+let bgCtx = null;
+let particles = [];
+let bgAnimationId = null;
+
+function initBgCanvas() {
+    if (!bgCanvas) return;
+    bgCtx = bgCanvas.getContext('2d');
+    resizeBgCanvas();
+    createParticles();
+    animateParticles();
+    window.addEventListener('resize', resizeBgCanvas);
+}
+
+function resizeBgCanvas() {
+    if (!bgCanvas) return;
+    bgCanvas.width = window.innerWidth;
+    bgCanvas.height = window.innerHeight;
+}
+
+function createParticles() {
+    particles = [];
+    const count = Math.min(80, Math.floor((bgCanvas.width * bgCanvas.height) / 15000));
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: Math.random() * bgCanvas.width,
+            y: Math.random() * bgCanvas.height,
+            r: Math.random() * 2 + 0.5,
+            dx: (Math.random() - 0.5) * 0.5,
+            dy: (Math.random() - 0.5) * 0.5,
+            alpha: Math.random() * 0.5 + 0.2
+        });
+    }
+}
+
+function animateParticles() {
+    if (!bgCtx || !bgCanvas) return;
+    bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+    for (const p of particles) {
+        p.x += p.dx;
+        p.y += p.dy;
+        if (p.x < 0) p.x = bgCanvas.width;
+        if (p.x > bgCanvas.width) p.x = 0;
+        if (p.y < 0) p.y = bgCanvas.height;
+        if (p.y > bgCanvas.height) p.y = 0;
+        bgCtx.beginPath();
+        bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        bgCtx.fillStyle = `rgba(0, 212, 255, ${p.alpha})`;
+        bgCtx.fill();
+    }
+    // Draw subtle connection lines between nearby particles
+    for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 120) {
+                bgCtx.beginPath();
+                bgCtx.moveTo(particles[i].x, particles[i].y);
+                bgCtx.lineTo(particles[j].x, particles[j].y);
+                bgCtx.strokeStyle = `rgba(0, 212, 255, ${0.06 * (1 - dist / 120)})`;
+                bgCtx.lineWidth = 0.5;
+                bgCtx.stroke();
+            }
+        }
+    }
+    bgAnimationId = requestAnimationFrame(animateParticles);
+}
+
+function stopBgAnimation() {
+    if (bgAnimationId) {
+        cancelAnimationFrame(bgAnimationId);
+        bgAnimationId = null;
+    }
+}
+
 // Settings management
 const settingsModal = document.getElementById('settingsModal');
 const nicknameInput = document.getElementById('nicknameInput');
@@ -439,7 +516,7 @@ gameRunning = false;
 // Load settings and leaderboard on page load
 loadSettings();
 loadLeaderboard();
-
+initBgCanvas();
 loop();
 
 // Navigation functions for landing page and game page

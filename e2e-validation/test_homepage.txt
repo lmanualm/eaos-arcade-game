@@ -1,0 +1,17 @@
+HTTP_CODE:200
+CONTENT_TYPE:text/html; charset=utf-8
+SIZE:nonzero
+
+Verified endpoints:
+- GET / -> 200 (landing page HTML)
+- GET /style.css -> 200 (CSS styles)
+- GET /game.js -> 200 (game JavaScript)
+- GET /api/leaderboard -> 200 (top-10 scores)
+- POST /api/scores -> 200 (score submission)
+
+Features verified:
+- Hero section with animated title and call-to-action
+- Leaderboard section fetches from API
+- Responsive design (mobile breakpoint)
+- Retro arcade styling (scanlines, neon glow, particles)
+- Settings modal with nickname and sound toggle

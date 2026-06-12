@@ -9,26 +9,41 @@
 <body>
     <!-- Landing Page -->
     <div id="landingPage" class="landing-page">
+        <canvas id="bgCanvas" class="bg-canvas"></canvas>
+        <div class="scanlines"></div>
         <div class="landing-container">
             <header class="landing-header">
-                <h1 class="game-title">BREAKOUT</h1>
-                <p class="game-subtitle">Classic Breakout Game</p>
+                <h1 class="game-title">
+                    <span class="title-letter">B</span><span class="title-letter">R</span><span class="title-letter">E</span><span class="title-letter">A</span><span class="title-letter">K</span><span class="title-letter">O</span><span class="title-letter">U</span><span class="title-letter">T</span>
+                </h1>
+                <p class="game-subtitle">Classic Arcade Action</p>
+                <div class="player-badge" id="playerBadge">
+                    <span class="player-icon">👾</span>
+                    <span class="player-name" id="landingPlayerName">Player</span>
+                </div>
             </header>
 
             <section class="landing-content">
-                <!-- About Section -->
+                <!-- About / Play Section -->
                 <div class="about-section">
-                    <h2>About</h2>
-                    <p>Welcome to Breakout! A classic brick-breaking arcade game. Control the paddle to bounce the ball and destroy all the bricks. Don't let the ball fall!</p>
-                    <button class="play-button" onclick="startGame()">Play Game</button>
+                    <h2>Ready to Play?</h2>
+                    <p>Welcome to Breakout! Control the paddle, bounce the ball, and smash every brick. Clear the board to win — but don't let the ball drop!</p>
+                    <div class="controls-hint">
+                        <div class="control-key">←</div>
+                        <div class="control-key">→</div>
+                        <span>Move</span>
+                        <div class="control-key space">SPACE</div>
+                        <span>Restart</span>
+                    </div>
+                    <button class="play-button" onclick="startGame()">INSERT COIN — PLAY</button>
                 </div>
 
                 <!-- Leaderboard Section -->
                 <div class="leaderboard-section">
-                    <h2>Leaderboard</h2>
+                    <h2>🏆 High Scores</h2>
                     <div class="leaderboard-table">
                         <div class="leaderboard-header">
-                            <span class="rank">Rank</span>
+                            <span class="rank">#</span>
                             <span class="player">Player</span>
                             <span class="score">Score</span>
                         </div>
@@ -36,8 +51,13 @@
                             <!-- Leaderboard entries will be populated here -->
                         </div>
                     </div>
+                    <button class="refresh-btn" onclick="loadLeaderboard()">↻ Refresh</button>
                 </div>
             </section>
+
+            <footer class="landing-footer">
+                <p>Use <strong>Arrow Keys</strong> to move &bull; Press <strong>Space</strong> to restart</p>
+            </footer>
         </div>
     </div>
 
