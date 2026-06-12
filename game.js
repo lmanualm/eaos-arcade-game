@@ -2,6 +2,7 @@ const API_BASE_URL = (typeof window !== 'undefined' && window.API_BASE_URL) || '
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreSpan = document.getElementById('score');
+const livesSpan = document.getElementById('lives');
 const gameOverDiv = document.getElementById('gameOver');
 
 // Landing page background canvas for particles
@@ -133,6 +134,14 @@ function getPlayerId() {
     return playerId;
 }
 
+// Update landing page player badge
+function updateLandingPlayerName(name) {
+    const landingPlayerName = document.getElementById('landingPlayerName');
+    if (landingPlayerName && name) {
+        landingPlayerName.textContent = name;
+    }
+}
+
 // Load settings from backend API (falls back to localStorage abstraction)
 async function loadSettings() {
     const playerId = getPlayerId();
@@ -145,6 +154,7 @@ async function loadSettings() {
             playerSettings = data;
             nicknameInput.value = playerSettings.nickname || 'Player';
             soundToggle.checked = playerSettings.soundEnabled !== false;
+            updateLandingPlayerName(playerSettings.nickname || 'Player');
             // Cache successfully loaded settings to localStorage for offline fallback
             localStorageSettings.save(playerId, playerSettings);
             return;
@@ -159,6 +169,7 @@ async function loadSettings() {
         playerSettings = cached;
         nicknameInput.value = playerSettings.nickname || 'Player';
         soundToggle.checked = playerSettings.soundEnabled !== false;
+        updateLandingPlayerName(playerSettings.nickname || 'Player');
         console.log('Loaded settings from localStorage fallback');
     } else {
         console.warn('No cached settings in localStorage; using defaults');
@@ -178,6 +189,9 @@ function setDefaultSettings() {
 async function saveSettings() {
     playerSettings.nickname = nicknameInput.value || 'Player';
     playerSettings.soundEnabled = soundToggle.checked;
+
+    // Update landing page badge immediately so the player sees their new nickname
+    updateLandingPlayerName(playerSettings.nickname);
 
     // Always cache locally first so fallback works even if API is down
     localStorageSettings.save(playerSettings.playerId, playerSettings);
@@ -266,6 +280,48 @@ let lives = 3;
 let gameRunning = false;
 let bricks = [];
 
+// --------------------------------------------------------------
+// Audio system (Web Audio API – no external assets required)
+// --------------------------------------------------------------
+let audioCtx = null;
+
+function getAudioContext() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+}
+
+function playTone(freq, duration, type = 'square', volume = 0.05) {
+    if (!playerSettings.soundEnabled) return;
+    try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(volume, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+    } catch (e) {
+        // Audio is best-effort; never break the game for a sound issue
+    }
+}
+
+function soundHitWall()    { playTone(220, 0.08, 'square', 0.04); }
+function soundHitPaddle()  { playTone(440, 0.10, 'square', 0.05); }
+function soundHitBrick()   { playTone(660, 0.12, 'square', 0.05); }
+function soundLoseLife()   { playTone(150, 0.25, 'sawtooth', 0.06); }
+function soundWin()        {
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.15, 'square', 0.06), i * 90));
+}
+function soundGameOver()   {
+    [300, 250, 200].forEach((f, i) => setTimeout(() => playTone(f, 0.25, 'sawtooth', 0.06), i * 120));
+}
+
 const colors = ['#ff3333', '#ff8833', '#ffcc33', '#33cc33', '#3399ff'];
 
 function initBricks() {
@@ -318,13 +374,17 @@ function update() {
 
     if (ballX - BALL_R <= 0 || ballX + BALL_R >= W) {
         ballDX = -ballDX;
+        soundHitWall();
     }
     if (ballY - BALL_R <= 0) {
         ballDY = -ballDY;
+        soundHitWall();
     }
 
     if (ballY + BALL_R >= H) {
         lives--;
+        if (livesSpan) livesSpan.textContent = lives;
+        soundLoseLife();
         if (lives <= 0) {
             endGame();
             return;
@@ -344,6 +404,7 @@ function update() {
         ballDX = Math.sin(angle) * speed;
         ballDY = -Math.abs(Math.cos(angle) * speed);
         ballY = PADDLE_Y - BALL_R;
+        soundHitPaddle();
     }
 
     for (let row = 0; row < BRICK_ROWS; row++) {
@@ -361,6 +422,7 @@ function update() {
                 bricks[row][col].alive = false;
                 score += 10;
                 scoreSpan.textContent = score;
+                soundHitBrick();
 
                 if (Math.abs(dx) > Math.abs(dy)) {
                     ballDX = -ballDX;
@@ -373,6 +435,10 @@ function update() {
                     gameOverDiv.hidden = false;
                     gameOverDiv.textContent = 'YOU WIN!';
                     gameOverDiv.style.color = '#33ff33';
+                    soundWin();
+                    if (score > 0) {
+                        submitScore();
+                    }
                 }
                 return;
             }
@@ -402,7 +468,8 @@ function endGame() {
     gameOverDiv.hidden = false;
     gameOverDiv.textContent = 'GAME OVER';
     gameOverDiv.style.color = '#ff3333';
-    
+    soundGameOver();
+
     // Submit score to leaderboard if score > 0
     if (score > 0) {
         submitScore();
@@ -440,16 +507,30 @@ async function submitScore() {
 
 // Load and display leaderboard
 async function loadLeaderboard() {
+    const leaderboardList = document.getElementById('leaderboardList');
+    const leaderboardError = document.getElementById('leaderboardError');
+
+    if (leaderboardList) {
+        leaderboardList.innerHTML = '<div class="leaderboard-loading">Loading scores…</div>';
+        leaderboardList.setAttribute('aria-busy', 'true');
+    }
+    if (leaderboardError) leaderboardError.hidden = true;
+
     try {
         const response = await fetch(`${API_BASE_URL}/api/leaderboard`);
         if (response.ok) {
             const data = await response.json();
             displayLeaderboard(data.scores);
         } else {
-            console.error('Failed to load leaderboard');
+            throw new Error(`HTTP ${response.status}`);
         }
     } catch (err) {
         console.error('Error loading leaderboard:', err);
+        if (leaderboardList) {
+            leaderboardList.innerHTML = '';
+            leaderboardList.setAttribute('aria-busy', 'false');
+        }
+        if (leaderboardError) leaderboardError.hidden = false;
     }
 }
 
@@ -457,30 +538,39 @@ async function loadLeaderboard() {
 function displayLeaderboard(leaderboardScores) {
     const leaderboardList = document.getElementById('leaderboardList');
     if (!leaderboardList) return;
-    
+
+    leaderboardList.setAttribute('aria-busy', 'false');
     leaderboardList.innerHTML = '';
-    
-    if (leaderboardScores.length === 0) {
-        leaderboardList.innerHTML = '<div class="leaderboard-entry"><span colspan="3">No scores yet. Be the first!</span></div>';
+
+    if (!leaderboardScores || leaderboardScores.length === 0) {
+        leaderboardList.innerHTML = '<div class="leaderboard-entry"><span class="player" style="grid-column: span 3; text-align:center;">No scores yet. Be the first!</span></div>';
         return;
     }
-    
+
     leaderboardScores.forEach((entry, index) => {
         const entryDiv = document.createElement('div');
         entryDiv.className = 'leaderboard-entry';
         entryDiv.innerHTML = `
             <span class="rank">${index + 1}</span>
-            <span class="player">${entry.name}</span>
+            <span class="player">${escapeHtml(entry.name)}</span>
             <span class="score">${entry.score}</span>
         `;
         leaderboardList.appendChild(entryDiv);
     });
 }
 
+// Simple HTML escape helper to prevent XSS in leaderboard names
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function restart() {
     score = 0;
     lives = 3;
     scoreSpan.textContent = '0';
+    if (livesSpan) livesSpan.textContent = lives;
     gameOverDiv.hidden = true;
     initBricks();
     resetBall();
@@ -496,6 +586,94 @@ document.addEventListener('keydown', (e) => {
         restart();
     }
 });
+
+// Resume AudioContext on first user interaction (required by modern browsers)
+function resumeAudioContext() {
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+    }
+}
+document.addEventListener('click', resumeAudioContext, { once: true });
+document.addEventListener('keydown', resumeAudioContext, { once: true });
+
+// Touch controls for mobile
+function initTouchControls() {
+    const touchLeft = document.getElementById('touchLeft');
+    const touchRight = document.getElementById('touchRight');
+    const touchControls = document.getElementById('touchControls');
+    if (!touchLeft || !touchRight) return;
+
+    // Show touch controls on touch-capable devices
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        touchControls.hidden = false;
+    }
+
+    let leftInterval = null;
+    let rightInterval = null;
+
+    function startMoving(direction) {
+        if (direction === 'left') {
+            if (leftInterval) return;
+            leftInterval = setInterval(() => {
+                paddleX = Math.max(0, paddleX - 12);
+            }, 16);
+        } else {
+            if (rightInterval) return;
+            rightInterval = setInterval(() => {
+                paddleX = Math.min(W - PADDLE_W, paddleX + 12);
+            }, 16);
+        }
+    }
+
+    function stopMoving(direction) {
+        if (direction === 'left' && leftInterval) {
+            clearInterval(leftInterval);
+            leftInterval = null;
+        }
+        if (direction === 'right' && rightInterval) {
+            clearInterval(rightInterval);
+            rightInterval = null;
+        }
+    }
+
+    touchLeft.addEventListener('touchstart', (e) => { e.preventDefault(); startMoving('left'); });
+    touchLeft.addEventListener('touchend', (e) => { e.preventDefault(); stopMoving('left'); });
+    touchLeft.addEventListener('touchcancel', (e) => { e.preventDefault(); stopMoving('left'); });
+    touchLeft.addEventListener('mousedown', (e) => { e.preventDefault(); startMoving('left'); });
+    touchLeft.addEventListener('mouseup', (e) => { e.preventDefault(); stopMoving('left'); });
+    touchLeft.addEventListener('mouseleave', (e) => { e.preventDefault(); stopMoving('left'); });
+
+    touchRight.addEventListener('touchstart', (e) => { e.preventDefault(); startMoving('right'); });
+    touchRight.addEventListener('touchend', (e) => { e.preventDefault(); stopMoving('right'); });
+    touchRight.addEventListener('touchcancel', (e) => { e.preventDefault(); stopMoving('right'); });
+    touchRight.addEventListener('mousedown', (e) => { e.preventDefault(); startMoving('right'); });
+    touchRight.addEventListener('mouseup', (e) => { e.preventDefault(); stopMoving('right'); });
+    touchRight.addEventListener('mouseleave', (e) => { e.preventDefault(); stopMoving('right'); });
+
+    // Swipe / drag on canvas to move paddle
+    let isDragging = false;
+
+    canvas.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        updatePaddleFromTouch(e.touches[0].clientX);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        updatePaddleFromTouch(e.touches[0].clientX);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => { isDragging = false; });
+    canvas.addEventListener('touchcancel', () => { isDragging = false; });
+
+    function updatePaddleFromTouch(clientX) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = W / rect.width;
+        const x = (clientX - rect.left) * scaleX;
+        paddleX = Math.max(0, Math.min(W - PADDLE_W, x - PADDLE_W / 2));
+    }
+}
 
 function loop() {
     if (gameRunning) {
@@ -517,6 +695,7 @@ gameRunning = false;
 loadSettings();
 loadLeaderboard();
 initBgCanvas();
+initTouchControls();
 loop();
 
 // Navigation functions for landing page and game page

@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Breakout</title>
+    <meta name="description" content="Breakout — a classic arcade brick-breaker game. Play in your browser, compete for high scores, and relive the retro arcade experience.">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta property="og:title" content="Breakout — Classic Arcade Action">
+    <meta property="og:description" content="Play Breakout, the classic brick-breaker arcade game. Compete for the top spot on the leaderboard.">
+    <meta property="og:type" content="website">
+    <title>Breakout — Classic Arcade Action</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -35,7 +40,7 @@
                         <div class="control-key space">SPACE</div>
                         <span>Restart</span>
                     </div>
-                    <button class="play-button" onclick="startGame()">INSERT COIN — PLAY</button>
+                    <button class="play-button" onclick="startGame()" aria-label="Start playing Breakout">INSERT COIN — PLAY</button>
                 </div>
 
                 <!-- Leaderboard Section -->
@@ -47,11 +52,12 @@
                             <span class="player">Player</span>
                             <span class="score">Score</span>
                         </div>
-                        <div id="leaderboardList" class="leaderboard-list">
-                            <!-- Leaderboard entries will be populated here -->
+                        <div id="leaderboardList" class="leaderboard-list" aria-live="polite" aria-busy="false">
+                            <div class="leaderboard-loading">Loading scores…</div>
                         </div>
+                        <div id="leaderboardError" class="leaderboard-error" hidden>Unable to load scores. Please try again later.</div>
                     </div>
-                    <button class="refresh-btn" onclick="loadLeaderboard()">↻ Refresh</button>
+                    <button class="refresh-btn" onclick="loadLeaderboard()" aria-label="Refresh high scores">↻ Refresh</button>
                 </div>
             </section>
 
@@ -63,12 +69,20 @@
 
     <!-- Game Page -->
     <div id="gamePage" class="game-page" hidden>
-        <button class="back-button" onclick="backToLanding()">← Back to Landing</button>
-        <button class="settings-button" onclick="openSettings()">⚙ Settings</button>
+        <button class="back-button" onclick="backToLanding()" aria-label="Back to landing page">← Back to Landing</button>
+        <button class="settings-button" onclick="openSettings()" aria-label="Open settings">⚙ Settings</button>
         <div class="game-wrapper">
-            <div class="score-display">Score: <span id="score">0</span></div>
-            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            <div class="score-display">Score: <span id="score">0</span> | Lives: <span id="lives">3</span></div>
+            <div class="canvas-wrapper">
+                <canvas id="gameCanvas" width="800" height="600"></canvas>
+            </div>
             <div class="game-over" id="gameOver" hidden>GAME OVER</div>
+            <!-- Mobile touch controls -->
+            <div class="touch-controls" id="touchControls" hidden>
+                <button class="touch-btn touch-left" id="touchLeft" aria-label="Move paddle left">◄</button>
+                <button class="touch-btn touch-right" id="touchRight" aria-label="Move paddle right">►</button>
+            </div>
+            <p class="mobile-hint">Swipe or use on-screen buttons to move the paddle</p>
         </div>
     </div>
 
