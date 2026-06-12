@@ -6,7 +6,7 @@ const { LeaderboardDb } = require('./db');
 
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || 3000;
-const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+const SETTINGS_FILE = process.env.SETTINGS_PATH || path.join(__dirname, 'settings.json');
 
 // SQLite-backed leaderboard
 const db = new LeaderboardDb();

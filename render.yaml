@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: eaos-arcade-game
+    runtime: node
+    plan: free
+    buildCommand: "npm ci"
+    startCommand: "npm start"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /data/leaderboard.db
+      - key: SETTINGS_PATH
+        value: /data/settings.json
+    disk:
+      name: arcade-data
+      mountPath: /data
+      sizeGB: 1
