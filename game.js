@@ -1,5 +1,6 @@
 const API_BASE_URL = (typeof window !== 'undefined' && window.API_BASE_URL) || '';
 const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 const scoreSpan = document.getElementById('score');
 const gameOverDiv = document.getElementById('gameOver');
 
