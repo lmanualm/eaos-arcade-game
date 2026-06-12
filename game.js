@@ -124,6 +124,46 @@ const localStorageSettings = {
     }
 };
 
+// fetch with timeout to avoid hanging on static hosts without a backend
+async function fetchWithTimeout(url, options = {}, timeoutMs = 3000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    } catch (err) {
+        clearTimeout(id);
+        throw err;
+    }
+}
+
+// Local session scores (fallback when backend is unavailable)
+const localScores = {
+    _key: 'breakout-local-scores',
+    get() {
+        try {
+            const raw = localStorage.getItem(this._key);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    },
+    save(scores) {
+        try {
+            localStorage.setItem(this._key, JSON.stringify(scores.slice(0, 10)));
+        } catch (e) {
+            // ignore
+        }
+    },
+    add(name, score) {
+        const scores = this.get();
+        scores.push({ name, score, timestamp: new Date().toISOString() });
+        scores.sort((a, b) => b.score - a.score);
+        this.save(scores);
+    }
+};
+
 // Get or create player ID (using session storage to persist across page reloads)
 function getPlayerId() {
     let playerId = sessionStorage.getItem('playerId');
@@ -148,7 +188,7 @@ async function loadSettings() {
     playerSettings.playerId = playerId;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/settings/${encodeURIComponent(playerId)}`);
+        const response = await fetchWithTimeout(`${API_BASE_URL}/api/settings/${encodeURIComponent(playerId)}`, {}, 3000);
         if (response.ok) {
             const data = await response.json();
             playerSettings = data;
@@ -197,7 +237,7 @@ async function saveSettings() {
     localStorageSettings.save(playerSettings.playerId, playerSettings);
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/settings`, {
+        const response = await fetchWithTimeout(`${API_BASE_URL}/api/settings`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -479,9 +519,9 @@ function endGame() {
 // Submit score to the leaderboard API
 async function submitScore() {
     const playerName = playerSettings.nickname || 'Anonymous';
-    
+
     try {
-        const response = await fetch(`${API_BASE_URL}/api/scores`, {
+        const response = await fetchWithTimeout(`${API_BASE_URL}/api/scores`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -490,19 +530,25 @@ async function submitScore() {
                 name: playerName,
                 score: score
             })
-        });
-        
+        }, 3000);
+
         if (response.ok) {
             const data = await response.json();
             console.log('Score submitted:', data);
             // Refresh leaderboard after submitting
             loadLeaderboard();
+            return;
         } else {
-            console.error('Failed to submit score');
+            console.error('Failed to submit score, backend returned', response.status);
         }
     } catch (err) {
-        console.error('Error submitting score:', err);
+        console.error('Error submitting score to backend:', err);
     }
+
+    // Backend unavailable or returned error — save locally so the player still sees their score
+    localScores.add(playerName, score);
+    console.log('Score saved to localStorage fallback');
+    loadLeaderboard();
 }
 
 // Load and display leaderboard
@@ -517,15 +563,22 @@ async function loadLeaderboard() {
     if (leaderboardError) leaderboardError.hidden = true;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/leaderboard`);
+        const response = await fetchWithTimeout(`${API_BASE_URL}/api/leaderboard`, {}, 3000);
         if (response.ok) {
             const data = await response.json();
             displayLeaderboard(data.scores);
-        } else {
-            throw new Error(`HTTP ${response.status}`);
+            return;
         }
     } catch (err) {
-        console.error('Error loading leaderboard:', err);
+        console.error('Error loading leaderboard from backend:', err);
+    }
+
+    // Backend unavailable or returned error — fall back to local session scores
+    const local = localScores.get();
+    if (local.length > 0) {
+        console.log('Loaded leaderboard from localStorage fallback');
+        displayLeaderboard(local);
+    } else {
         if (leaderboardList) {
             leaderboardList.innerHTML = '';
             leaderboardList.setAttribute('aria-busy', 'false');
