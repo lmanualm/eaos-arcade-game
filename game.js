@@ -16,6 +16,36 @@ let playerSettings = {
     soundEnabled: true
 };
 
+// localStorage abstraction for settings fallback
+const localStorageSettings = {
+    _key(playerId) {
+        return 'breakout-settings-' + playerId;
+    },
+    get(playerId) {
+        try {
+            const raw = localStorage.getItem(this._key(playerId));
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            console.warn('localStorageSettings.get error:', e);
+            return null;
+        }
+    },
+    save(playerId, settings) {
+        try {
+            localStorage.setItem(this._key(playerId), JSON.stringify(settings));
+        } catch (e) {
+            console.warn('localStorageSettings.save error:', e);
+        }
+    },
+    clear(playerId) {
+        try {
+            localStorage.removeItem(this._key(playerId));
+        } catch (e) {
+            console.warn('localStorageSettings.clear error:', e);
+        }
+    }
+};
+
 // Get or create player ID (using session storage to persist across page reloads)
 function getPlayerId() {
     let playerId = sessionStorage.getItem('playerId');
@@ -26,11 +56,11 @@ function getPlayerId() {
     return playerId;
 }
 
-// Load settings from backend API
+// Load settings from backend API (falls back to localStorage abstraction)
 async function loadSettings() {
     const playerId = getPlayerId();
     playerSettings.playerId = playerId;
-    
+
     try {
         const response = await fetch(`${API_BASE_URL}/api/settings/${encodeURIComponent(playerId)}`);
         if (response.ok) {
@@ -38,12 +68,23 @@ async function loadSettings() {
             playerSettings = data;
             nicknameInput.value = playerSettings.nickname || 'Player';
             soundToggle.checked = playerSettings.soundEnabled !== false;
-        } else {
-            console.error('Failed to load settings from backend');
-            setDefaultSettings();
+            // Cache successfully loaded settings to localStorage for offline fallback
+            localStorageSettings.save(playerId, playerSettings);
+            return;
         }
     } catch (err) {
         console.error('Error loading settings from backend:', err);
+    }
+
+    // Backend failed or unavailable — fall back to localStorage abstraction
+    const cached = localStorageSettings.get(playerId);
+    if (cached) {
+        playerSettings = cached;
+        nicknameInput.value = playerSettings.nickname || 'Player';
+        soundToggle.checked = playerSettings.soundEnabled !== false;
+        console.log('Loaded settings from localStorage fallback');
+    } else {
+        console.warn('No cached settings in localStorage; using defaults');
         setDefaultSettings();
     }
 }
@@ -56,11 +97,14 @@ function setDefaultSettings() {
     soundToggle.checked = playerSettings.soundEnabled;
 }
 
-// Save settings to backend API
+// Save settings to backend API (also caches via localStorage abstraction)
 async function saveSettings() {
     playerSettings.nickname = nicknameInput.value || 'Player';
     playerSettings.soundEnabled = soundToggle.checked;
-    
+
+    // Always cache locally first so fallback works even if API is down
+    localStorageSettings.save(playerSettings.playerId, playerSettings);
+
     try {
         const response = await fetch(`${API_BASE_URL}/api/settings`, {
             method: 'POST',
@@ -73,7 +117,7 @@ async function saveSettings() {
                 soundEnabled: playerSettings.soundEnabled
             })
         });
-        
+
         if (response.ok) {
             const data = await response.json();
             playerSettings = data.settings;
@@ -85,7 +129,7 @@ async function saveSettings() {
     } catch (err) {
         console.error('Error saving settings:', err);
     }
-    
+
     closeSettings();
 }
 
