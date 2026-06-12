@@ -145,7 +145,7 @@ Response: `400 Bad Request` - "Invalid data: name and score are required"
 ## Features
 
 ### Persistent Storage
-- Scores are persisted to `scores.json` file
+- Scores are persisted to an SQLite database (`leaderboard.db`)
 - Survives server restarts
 - Top 10 scores automatically maintained
 
@@ -224,15 +224,14 @@ curl -X POST http://localhost:3000/api/scores \
 ### Score Storage Flow
 1. Player submits score via `POST /api/scores`
 2. Input validation performed
-3. Score added to in-memory array
+3. Score inserted into SQLite database
 4. Top 10 scores kept (sorted descending)
-5. Persisted to `scores.json`
-6. Cache invalidated for next query
+5. Cache invalidated for next query
 
 ### Leaderboard Query Flow
 1. Client requests `GET /api/leaderboard`
 2. Check cache (5-second TTL)
-3. If expired or empty: load from `scores.json`
+3. If expired or empty: query SQLite for top 10
 4. Sort and keep top 10
 5. Return JSON response with query time
 

@@ -2,49 +2,22 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const { LeaderboardDb } = require('./db');
 
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || 3000;
-const SCORES_FILE = path.join(__dirname, 'scores.json');
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 
-// In-memory score storage (top-10 cached)
-let scores = [];
+// SQLite-backed leaderboard
+const db = new LeaderboardDb();
+
+// In-memory cache for top-10 scores
 let cachedLeaderboard = [];
 let lastCacheTime = 0;
 const CACHE_TTL = 5000; // Cache for 5 seconds
 
-// In-memory settings storage
+// In-memory settings storage (kept in JSON file)
 let playerSettings = {};
-
-// Helper: keep only top 10 scores
-function keepTop10(scoresArray) {
-  return scoresArray
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
-}
-
-// Helper: load scores from file
-function loadScoresFromFile() {
-  try {
-    if (fs.existsSync(SCORES_FILE)) {
-      const data = fs.readFileSync(SCORES_FILE, 'utf8');
-      return JSON.parse(data) || [];
-    }
-  } catch (err) {
-    console.error('Error loading scores:', err);
-  }
-  return [];
-}
-
-// Helper: save scores to file
-function saveScoresToFile(scoresArray) {
-  try {
-    fs.writeFileSync(SCORES_FILE, JSON.stringify(scoresArray, null, 2), 'utf8');
-  } catch (err) {
-    console.error('Error saving scores:', err);
-  }
-}
 
 // Helper: load settings from file
 function loadSettingsFromFile() {
@@ -72,15 +45,11 @@ function saveSettingsToFile(settingsObj) {
 function getLeaderboard() {
   const now = Date.now();
   if (now - lastCacheTime > CACHE_TTL || cachedLeaderboard.length === 0) {
-    const allScores = loadScoresFromFile();
-    cachedLeaderboard = keepTop10(allScores);
+    cachedLeaderboard = db.getTopScores(10);
     lastCacheTime = now;
   }
   return cachedLeaderboard;
 }
-
-// Load scores at startup
-scores = loadScoresFromFile();
 
 // Load settings at startup
 playerSettings = loadSettingsFromFile();
@@ -112,7 +81,6 @@ function serveStaticFile(filePath, res) {
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
-  const query = parsedUrl.query;
 
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -131,9 +99,9 @@ const server = http.createServer((req, res) => {
     const startTime = Date.now();
     const leaderboard = getLeaderboard();
     const queryTime = Date.now() - startTime;
-    
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
+    res.end(JSON.stringify({
       scores: leaderboard,
       queryTimeMs: queryTime
     }));
@@ -156,37 +124,32 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
-        
+
         // Validate input
         if (!data.name || typeof data.score !== 'number') {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid data: name and score are required' }));
           return;
         }
-        
+
         if (data.score < 0) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid data: score cannot be negative' }));
           return;
         }
-        
-        // Add new score
-        scores.push({
-          name: String(data.name).slice(0, 50), // Limit name length
-          score: Math.floor(data.score),
-          timestamp: new Date().toISOString()
-        });
-        
-        // Keep only top 10 and save
-        scores = keepTop10(scores);
-        saveScoresToFile(scores);
-        
+
+        // Add new score to SQLite
+        db.addScore(data.name, data.score);
+
         // Invalidate cache
-        cachedLeaderboard = scores;
-        lastCacheTime = Date.now();
-        
+        cachedLeaderboard = [];
+        lastCacheTime = 0;
+
+        // Return updated top 10
+        const updatedScores = db.getTopScores(10);
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, scores: scores }));
+        res.end(JSON.stringify({ success: true, scores: updatedScores }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid JSON' }));
@@ -195,24 +158,24 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-   // GET /api/settings/:playerId - retrieve player settings
-   const settingsGetMatch = pathname.match(/^\/api\/settings\/(.*?)$/);
-   if (req.method === 'GET' && pathname.startsWith('/api/settings/')) {
-     const playerId = decodeURIComponent(settingsGetMatch ? settingsGetMatch[1] : '');
-    
+  // GET /api/settings/:playerId - retrieve player settings
+  const settingsGetMatch = pathname.match(/^\/api\/settings\/(.*?)$/);
+  if (req.method === 'GET' && pathname.startsWith('/api/settings/')) {
+    const playerId = decodeURIComponent(settingsGetMatch ? settingsGetMatch[1] : '');
+
     if (!playerId || playerId.length === 0) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Player ID is required' }));
       return;
     }
-    
+
     const settings = playerSettings[playerId] || {
       playerId: playerId,
       nickname: playerId,
       soundEnabled: true,
       createdAt: new Date().toISOString()
     };
-    
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(settings));
     return;
@@ -227,16 +190,16 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
-        
+
         // Validate required fields
         if (!data.playerId) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Player ID is required' }));
           return;
         }
-        
+
         const playerId = String(data.playerId).slice(0, 100); // Limit player ID length
-        
+
         // Validate nickname if provided
         if (data.nickname !== undefined && data.nickname !== null) {
           const nickname = String(data.nickname).slice(0, 50);
@@ -246,14 +209,14 @@ const server = http.createServer((req, res) => {
             return;
           }
         }
-        
+
         // Validate soundEnabled if provided
         if (data.soundEnabled !== undefined && typeof data.soundEnabled !== 'boolean') {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Sound preference must be a boolean' }));
           return;
         }
-        
+
         // Create or update settings
         const currentSettings = playerSettings[playerId] || { createdAt: new Date().toISOString() };
         const updatedSettings = {
@@ -263,10 +226,10 @@ const server = http.createServer((req, res) => {
           createdAt: currentSettings.createdAt,
           updatedAt: new Date().toISOString()
         };
-        
+
         playerSettings[playerId] = updatedSettings;
         saveSettingsToFile(playerSettings);
-        
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, settings: updatedSettings }));
       } catch (e) {
@@ -290,6 +253,10 @@ const server = http.createServer((req, res) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(`Server running on http://${HOST}:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
+  });
+}
+
+module.exports = { server, db };
